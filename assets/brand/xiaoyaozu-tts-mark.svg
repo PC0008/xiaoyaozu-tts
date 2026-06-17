@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="markGradient" x1="82" y1="74" x2="430" y2="438" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12324A"/>
+      <stop offset="0.48" stop-color="#0E6D8F"/>
+      <stop offset="1" stop-color="#1FC7A6"/>
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="126" y1="272" x2="386" y2="272" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DE3D1"/>
+      <stop offset="1" stop-color="#31A8FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#markGradient)"/>
+  <path d="M112 300C151 254 190 232 226 232C263 232 294 254 340 201" stroke="#F7F9FA" stroke-width="24" stroke-linecap="round"/>
+  <path d="M112 335C159 294 195 278 228 278C266 278 295 297 349 248" stroke="url(#waveGradient)" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="340" cy="201" r="22" fill="#FFB84D"/>
+  <circle cx="112" cy="335" r="15" fill="#7DE3D1"/>
+  <text x="256" y="350" text-anchor="middle"
+    font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif"
+    font-size="190" font-weight="760" fill="#F7F9FA">逍</text>
+</svg>

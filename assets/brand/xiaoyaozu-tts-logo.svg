@@ -1,0 +1,47 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="markGradient" x1="72" y1="68" x2="272" y2="292" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12324A"/>
+      <stop offset="0.48" stop-color="#0E6D8F"/>
+      <stop offset="1" stop-color="#1FC7A6"/>
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="96" y1="180" x2="250" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DE3D1"/>
+      <stop offset="1" stop-color="#31A8FF"/>
+    </linearGradient>
+    <filter id="softShadow" x="40" y="44" width="272" height="272" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0B1324" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="360" fill="#F7F9FA"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="72" y="68" width="224" height="224" rx="52" fill="url(#markGradient)"/>
+    <path d="M112 207C137 178 161 164 184 164C207 164 226 178 256 144" stroke="#F7F9FA" stroke-width="11" stroke-linecap="round"/>
+    <path d="M110 227C141 201 163 190 185 190C209 190 226 202 258 172" stroke="url(#waveGradient)" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="258" cy="144" r="11" fill="#FFB84D"/>
+    <circle cx="112" cy="227" r="7" fill="#7DE3D1"/>
+    <text x="184" y="232" text-anchor="middle"
+      font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif"
+      font-size="92" font-weight="700" fill="#F7F9FA">逍</text>
+  </g>
+
+  <text x="350" y="171"
+    font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif"
+    font-size="76" font-weight="750" fill="#0B1324" letter-spacing="0">逍遥族</text>
+  <text x="655" y="171"
+    font-family="Inter, SF Pro Display, Arial, sans-serif"
+    font-size="74" font-weight="760" fill="#1A8FFF" letter-spacing="0">TTS</text>
+  <text x="354" y="224"
+    font-family="Inter, PingFang SC, Noto Sans CJK SC, Arial, sans-serif"
+    font-size="28" font-weight="500" fill="#52616B" letter-spacing="0">Local voice profiles for agents and creators</text>
+
+  <g transform="translate(354 258)">
+    <rect x="0" y="0" width="128" height="18" rx="9" fill="#0B1324"/>
+    <rect x="148" y="0" width="128" height="18" rx="9" fill="#1A8FFF"/>
+    <rect x="296" y="0" width="128" height="18" rx="9" fill="#1FC7A6"/>
+    <rect x="444" y="0" width="128" height="18" rx="9" fill="#FFB84D"/>
+    <rect x="592" y="0" width="128" height="18" rx="9" fill="#F06449"/>
+  </g>
+</svg>
