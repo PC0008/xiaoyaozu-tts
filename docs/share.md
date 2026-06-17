@@ -34,7 +34,7 @@ Steps:
 4. Enter the project folder:
    cd xiaoyaozu-tts
 5. Run the installer:
-   ./scripts/install.sh --all
+   ./scripts/install.sh --all --download-models
 6. Verify:
    source .venv/bin/activate
    xiaoyao-tts doctor
@@ -53,7 +53,7 @@ If the agent already has GitHub access:
 ```bash
 git clone https://github.com/PC0008/xiaoyaozu-tts.git
 cd xiaoyaozu-tts
-./scripts/install.sh --all
+./scripts/install.sh --all --download-models
 source .venv/bin/activate
 xiaoyao-tts doctor --json
 ```
@@ -82,4 +82,4 @@ Installs full runtime and development dependencies. Recommended for agents.
 
 The first automatic transcription downloads SenseVoiceSmall.
 
-The first speech generation downloads VoxCPM2. The model is large, so the first run can take a while. Future runs reuse the local cache.
+If `--download-models` was used, SenseVoiceSmall and VoxCPM2 are downloaded during install. If not, the first ASR/generation command downloads them lazily. The model is large, so prefer install-time download for non-technical users.

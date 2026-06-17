@@ -3,13 +3,15 @@ set -euo pipefail
 
 MODE="all"
 RUN_DOCTOR="1"
+DOWNLOAD_MODELS="0"
+DOWNLOAD_ARGS=()
 
 usage() {
   cat <<'EOF'
 Install Xiaoyaozu TTS locally.
 
 Usage:
-  ./scripts/install.sh [--light|--tts|--all] [--skip-doctor]
+  ./scripts/install.sh [--light|--tts|--all] [--download-models] [--skip-doctor]
 
 Modes:
   --light       Install lightweight CLI only.
@@ -17,6 +19,9 @@ Modes:
   --all         Install full developer/runtime environment. Default.
 
 Options:
+  --download-models      Download VoxCPM2 and SenseVoice during install.
+  --include-denoiser     When used with --download-models, also download ZipEnhancer.
+  --no-asr               When used with --download-models, skip SenseVoice ASR.
   --skip-doctor Do not run xiaoyao-tts doctor after install.
   -h, --help    Show this help.
 EOF
@@ -32,6 +37,15 @@ while [[ $# -gt 0 ]]; do
       ;;
     --all)
       MODE="all"
+      ;;
+    --download-models)
+      DOWNLOAD_MODELS="1"
+      ;;
+    --include-denoiser)
+      DOWNLOAD_ARGS+=("--include-denoiser")
+      ;;
+    --no-asr)
+      DOWNLOAD_ARGS+=("--no-asr")
       ;;
     --skip-doctor)
       RUN_DOCTOR="0"
@@ -100,7 +114,20 @@ case "$MODE" in
     ;;
 esac
 
+if [[ "$DOWNLOAD_MODELS" == "1" ]]; then
+  if [[ "$MODE" == "light" ]]; then
+    echo "--download-models requires --tts or --all, because model download dependencies are not installed in --light mode." >&2
+    exit 1
+  fi
+  echo
+  echo "Downloading runtime models. This can take a while on first install..."
+  xiaoyao-tts setup download-models "${DOWNLOAD_ARGS[@]}"
+  echo
+  xiaoyao-tts setup status
+fi
+
 if [[ "$RUN_DOCTOR" == "1" ]]; then
+  echo
   xiaoyao-tts doctor
 fi
 

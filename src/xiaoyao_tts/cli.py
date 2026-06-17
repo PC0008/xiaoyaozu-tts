@@ -18,6 +18,7 @@ from .config import DEFAULT_MODEL_ID, app_home, ensure_app_dirs
 from .errors import InputError, XiaoyaoTTSError
 from .history import list_generation_records, new_batch_id, record_generation
 from .profiles import create_profile, delete_profile, list_profiles, load_profile, update_profile_transcript
+from .setup_models import cache_status, download_models, status_as_dicts
 
 
 def emit_json(payload: dict) -> None:
@@ -79,6 +80,7 @@ def command_doctor(args: argparse.Namespace) -> int:
         "ffmpeg": ffmpeg_path,
         "voxcpm_available": voxcpm_available,
         "funasr_available": funasr_available,
+        "models": status_as_dicts(),
         "profiles": len(list_profiles()),
     }
     ok(payload, as_json=args.json)
@@ -89,6 +91,9 @@ def command_doctor(args: argparse.Namespace) -> int:
         print(f"ffmpeg: {payload['ffmpeg']}")
         print(f"VoxCPM: {'available' if payload['voxcpm_available'] else 'missing'}")
         print(f"FunASR: {'available' if payload['funasr_available'] else 'missing'}")
+        for status in cache_status():
+            state = "cached" if status.cached else "missing"
+            print(f"Model {status.name}: {state} ({status.size_human})")
         print(f"Profiles: {payload['profiles']}")
     return 0
 
@@ -266,6 +271,32 @@ def command_history_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_setup_download_models(args: argparse.Namespace) -> int:
+    with noisy_runtime(args.json):
+        statuses = download_models(include_asr=not args.no_asr, include_denoiser=args.include_denoiser)
+    payload = {
+        "models": [asdict(status) for status in statuses],
+        "message": "Downloaded runtime models.",
+    }
+    ok(payload, as_json=args.json)
+    if not args.json:
+        print(payload["message"])
+        for status in statuses:
+            print(f"{status.name}: {status.size_human} at {status.path}")
+    return 0
+
+
+def command_setup_status(args: argparse.Namespace) -> int:
+    statuses = cache_status()
+    payload = {"models": [asdict(status) for status in statuses]}
+    ok(payload, as_json=args.json)
+    if not args.json:
+        for status in statuses:
+            state = "cached" if status.cached else "missing"
+            print(f"{status.name}\t{state}\t{status.size_human}\t{status.path or '-'}")
+    return 0
+
+
 def add_generation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL_ID)
     parser.add_argument("--device", default="auto")
@@ -283,6 +314,19 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = subparsers.add_parser("doctor", help="Check local runtime requirements")
     doctor.add_argument("--json", action="store_true")
     doctor.set_defaults(func=command_doctor)
+
+    setup = subparsers.add_parser("setup", help="Prepare runtime models and inspect cache status")
+    setup_sub = setup.add_subparsers(dest="setup_command", required=True)
+
+    download = setup_sub.add_parser("download-models", help="Download VoxCPM2 and ASR models before first generation")
+    download.add_argument("--no-asr", action="store_true", help="Only download VoxCPM2; skip SenseVoice ASR")
+    download.add_argument("--include-denoiser", action="store_true", help="Also download the optional ZipEnhancer denoiser")
+    download.add_argument("--json", action="store_true")
+    download.set_defaults(func=command_setup_download_models)
+
+    setup_status = setup_sub.add_parser("status", help="Show local model cache status")
+    setup_status.add_argument("--json", action="store_true")
+    setup_status.set_defaults(func=command_setup_status)
 
     profile = subparsers.add_parser("profile", help="Manage voice profiles")
     profile_sub = profile.add_subparsers(dest="profile_command", required=True)

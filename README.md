@@ -14,7 +14,36 @@
 - 用 VoxCPM2 极致克隆生成配音
 - 支持单条、批量、生成历史和 agent-friendly JSON
 
-## Quick Start
+## Install From GitHub
+
+If this repository is private, first give the other person or their agent GitHub access to:
+
+```text
+https://github.com/PC0008/xiaoyaozu-tts
+```
+
+Then install:
+
+```bash
+git clone https://github.com/PC0008/xiaoyaozu-tts.git
+cd xiaoyaozu-tts
+
+./scripts/install.sh --all --download-models
+source .venv/bin/activate
+xiaoyao-tts doctor
+```
+
+`--download-models` downloads VoxCPM2 and SenseVoice during installation, so the first real generation does not unexpectedly start a large model download.
+
+If you only want to install the code first and download models later:
+
+```bash
+./scripts/install.sh --all
+source .venv/bin/activate
+xiaoyao-tts setup download-models
+```
+
+## Local Development
 
 ```bash
 python -m venv .venv

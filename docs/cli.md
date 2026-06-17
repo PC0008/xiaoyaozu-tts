@@ -7,6 +7,21 @@ xiaoyao-tts doctor
 xiaoyao-tts doctor --json
 ```
 
+## Prepare Models
+
+Download VoxCPM2 and SenseVoice before first generation:
+
+```bash
+xiaoyao-tts setup download-models
+xiaoyao-tts setup status
+```
+
+Optional denoiser:
+
+```bash
+xiaoyao-tts setup download-models --include-denoiser
+```
+
 ## Voice Profiles
 
 Create with automatic ASR:

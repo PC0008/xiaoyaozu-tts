@@ -5,6 +5,8 @@ from pathlib import Path
 
 APP_NAME = "xiaoyaozu-tts"
 DEFAULT_MODEL_ID = "openbmb/VoxCPM2"
+DEFAULT_ASR_MODEL_ID = "iic/SenseVoiceSmall"
+DEFAULT_DENOISER_MODEL_ID = "iic/speech_zipenhancer_ans_multiloss_16k_base"
 DEFAULT_SAMPLE_RATE = 16_000
 
 

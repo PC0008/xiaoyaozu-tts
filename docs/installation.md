@@ -22,8 +22,10 @@ brew install ffmpeg
 git clone https://github.com/PC0008/xiaoyaozu-tts.git
 cd xiaoyaozu-tts
 
-./scripts/install.sh --all
+./scripts/install.sh --all --download-models
 ```
+
+This downloads the runtime models during setup instead of waiting until the first generation.
 
 Manual equivalent:
 
@@ -33,6 +35,7 @@ source .venv/bin/activate
 pip install -e ".[all]"
 
 xiaoyao-tts doctor
+xiaoyao-tts setup download-models
 ```
 
 ## Lightweight Install
@@ -68,6 +71,9 @@ export XIAOYAO_TTS_HOME=/path/to/data
 
 ## First Run Notes
 
-第一次自动转写会下载 SenseVoiceSmall。
+如果安装时没有运行 `--download-models`，第一次自动转写会下载 SenseVoiceSmall，第一次生成语音会下载 VoxCPM2。模型较大，建议安装阶段提前下载：
 
-第一次生成语音会下载 VoxCPM2。模型较大，后续会复用本机缓存。
+```bash
+xiaoyao-tts setup download-models
+xiaoyao-tts setup status
+```
