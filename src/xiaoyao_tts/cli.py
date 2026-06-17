@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from dataclasses import asdict
@@ -17,6 +18,15 @@ from .profiles import create_profile, delete_profile, list_profiles, load_profil
 
 def emit_json(payload: dict) -> None:
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+@contextlib.contextmanager
+def noisy_runtime(as_json: bool):
+    if as_json:
+        with contextlib.redirect_stdout(sys.stderr):
+            yield
+    else:
+        yield
 
 
 def ok(payload: dict | None = None, *, as_json: bool = False) -> None:
@@ -76,7 +86,8 @@ def command_profile_create(args: argparse.Namespace) -> int:
     transcript = read_transcript_arg(args.transcript, args.transcript_file)
     if transcript is None:
         print("Transcribing reference audio...", file=sys.stderr)
-        transcript = SenseVoiceASR(device=args.asr_device).transcribe(audio_path)
+        with noisy_runtime(args.json):
+            transcript = SenseVoiceASR(device=args.asr_device).transcribe(audio_path)
     profile = create_profile(
         name=args.name,
         profile_id=args.id,
@@ -132,14 +143,15 @@ def command_speak(args: argparse.Namespace) -> int:
     profile = load_profile(args.profile)
     text = read_text_arg(args.text, args.text_file)
     backend = VoxCPMBackend(model_id=args.model, device=args.device, denoise=args.denoise)
-    result = backend.speak(
-        profile=profile,
-        text=text,
-        output_path=Path(args.out).expanduser().resolve(),
-        cfg_value=args.cfg_value,
-        inference_timesteps=args.inference_timesteps,
-        normalize=args.normalize,
-    )
+    with noisy_runtime(args.json):
+        result = backend.speak(
+            profile=profile,
+            text=text,
+            output_path=Path(args.out).expanduser().resolve(),
+            cfg_value=args.cfg_value,
+            inference_timesteps=args.inference_timesteps,
+            normalize=args.normalize,
+        )
     payload = {"profile": profile.id, **result, "message": f"Saved: {result['output']}"}
     ok(payload, as_json=args.json)
     if not args.json:
