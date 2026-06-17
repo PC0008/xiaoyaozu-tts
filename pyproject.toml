@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xiaoyaozu-tts"
+version = "0.1.0"
+description = "Local-first voice profile and TTS cloning toolkit for creators and agents."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "PC0008" }
+]
+dependencies = [
+  "voxcpm>=2.0.0",
+  "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+]
+
+[project.scripts]
+xiaoyao-tts = "xiaoyao_tts.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
