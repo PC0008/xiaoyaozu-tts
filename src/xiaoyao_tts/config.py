@@ -23,6 +23,15 @@ def outputs_dir() -> Path:
     return app_home() / "outputs"
 
 
+def history_dir() -> Path:
+    return app_home() / "history"
+
+
+def history_file() -> Path:
+    return history_dir() / "generations.jsonl"
+
+
 def ensure_app_dirs() -> None:
     profiles_dir().mkdir(parents=True, exist_ok=True)
     outputs_dir().mkdir(parents=True, exist_ok=True)
+    history_dir().mkdir(parents=True, exist_ok=True)

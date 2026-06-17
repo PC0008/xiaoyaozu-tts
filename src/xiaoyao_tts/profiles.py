@@ -70,6 +70,15 @@ def load_profile(profile_id: str) -> VoiceProfile:
     return VoiceProfile(**json.loads(path.read_text(encoding="utf-8")))
 
 
+def save_profile(profile: VoiceProfile) -> VoiceProfile:
+    path = metadata_path(profile.id)
+    if not path.exists():
+        raise ProfileError(f"Voice profile does not exist: {profile.id}")
+    profile.updated_at = utc_now()
+    path.write_text(json.dumps(asdict(profile), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return profile
+
+
 def list_profiles() -> list[VoiceProfile]:
     ensure_app_dirs()
     items: list[VoiceProfile] = []
@@ -127,6 +136,15 @@ def create_profile(
     )
     (root / "profile.json").write_text(json.dumps(asdict(profile), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return profile
+
+
+def update_profile_transcript(profile_id: str, transcript: str) -> VoiceProfile:
+    transcript = transcript.strip()
+    if not transcript:
+        raise ProfileError("Transcript cannot be empty.")
+    profile = load_profile(profile_id)
+    profile.transcript_path.write_text(transcript + "\n", encoding="utf-8")
+    return save_profile(profile)
 
 
 def delete_profile(profile_id: str) -> None:

@@ -10,10 +10,12 @@ from pathlib import Path
 from . import __version__
 from .asr import SenseVoiceASR
 from .audio import find_ffmpeg
+from .batch import load_batch_items
 from .backend import VoxCPMBackend
 from .config import DEFAULT_MODEL_ID, app_home, ensure_app_dirs
 from .errors import XiaoyaoTTSError
-from .profiles import create_profile, delete_profile, list_profiles, load_profile
+from .history import list_generation_records, new_batch_id, record_generation
+from .profiles import create_profile, delete_profile, list_profiles, load_profile, update_profile_transcript
 
 
 def emit_json(payload: dict) -> None:
@@ -139,6 +141,22 @@ def command_profile_delete(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_profile_update_transcript(args: argparse.Namespace) -> int:
+    transcript = read_transcript_arg(args.transcript, args.transcript_file)
+    if transcript is None:
+        raise XiaoyaoTTSError("Missing transcript. Use --transcript or --transcript-file.")
+    profile = update_profile_transcript(args.profile, transcript)
+    payload = {
+        "profile": asdict(profile),
+        "transcript": profile.transcript,
+        "message": f"Updated transcript for voice profile: {profile.id}",
+    }
+    ok(payload, as_json=args.json)
+    if not args.json:
+        print(payload["message"])
+    return 0
+
+
 def command_speak(args: argparse.Namespace) -> int:
     profile = load_profile(args.profile)
     text = read_text_arg(args.text, args.text_file)
@@ -152,11 +170,99 @@ def command_speak(args: argparse.Namespace) -> int:
             inference_timesteps=args.inference_timesteps,
             normalize=args.normalize,
         )
+    record = record_generation(
+        profile=profile.id,
+        text=text,
+        output=result["output"],
+        sample_rate=result.get("sample_rate"),
+        duration_sec=result.get("duration_sec"),
+        device=args.device,
+        model=args.model,
+        cfg_value=args.cfg_value,
+        inference_timesteps=args.inference_timesteps,
+        source="speak",
+    )
     payload = {"profile": profile.id, **result, "message": f"Saved: {result['output']}"}
+    payload["history"] = asdict(record)
     ok(payload, as_json=args.json)
     if not args.json:
         print(payload["message"])
     return 0
+
+
+def command_batch(args: argparse.Namespace) -> int:
+    profile = load_profile(args.profile)
+    input_path = Path(args.input).expanduser().resolve()
+    out_dir = Path(args.out_dir).expanduser().resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    items = load_batch_items(input_path, args.format)
+    backend = VoxCPMBackend(model_id=args.model, device=args.device, denoise=args.denoise)
+    batch_id = new_batch_id()
+    results = []
+    for index, item in enumerate(items, start=1):
+        output_path = out_dir / f"{index:03d}-{item.id}.wav"
+        with noisy_runtime(args.json):
+            result = backend.speak(
+                profile=profile,
+                text=item.text,
+                output_path=output_path,
+                cfg_value=args.cfg_value,
+                inference_timesteps=args.inference_timesteps,
+                normalize=args.normalize,
+            )
+        record = record_generation(
+            profile=profile.id,
+            text=item.text,
+            output=result["output"],
+            sample_rate=result.get("sample_rate"),
+            duration_sec=result.get("duration_sec"),
+            device=args.device,
+            model=args.model,
+            cfg_value=args.cfg_value,
+            inference_timesteps=args.inference_timesteps,
+            source="batch",
+            batch_id=batch_id,
+            item_id=item.id,
+        )
+        item_payload = {"id": item.id, **result, "history": asdict(record)}
+        results.append(item_payload)
+        if not args.json:
+            print(f"[{index}/{len(items)}] Saved: {result['output']}")
+    payload = {
+        "batch_id": batch_id,
+        "profile": profile.id,
+        "count": len(results),
+        "results": results,
+        "message": f"Generated {len(results)} files in {out_dir}",
+    }
+    ok(payload, as_json=args.json)
+    if not args.json:
+        print(payload["message"])
+    return 0
+
+
+def command_history_list(args: argparse.Namespace) -> int:
+    records = [asdict(record) for record in list_generation_records(limit=args.limit, profile=args.profile)]
+    if args.json:
+        ok({"history": records}, as_json=True)
+    else:
+        if not records:
+            print("No generation history yet.")
+            return 0
+        for record in records:
+            duration = record.get("duration_sec")
+            duration_text = f"{duration:.1f}s" if duration else "unknown"
+            print(f"{record['created_at']}\t{record['profile']}\t{duration_text}\t{record['output']}")
+    return 0
+
+
+def add_generation_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--model", default=DEFAULT_MODEL_ID)
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--cfg-value", type=float, default=2.0)
+    parser.add_argument("--inference-timesteps", type=int, default=10)
+    parser.add_argument("--normalize", action="store_true")
+    parser.add_argument("--denoise", action="store_true", help="Enable reference audio denoising. WAV profiles are recommended.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -197,19 +303,38 @@ def build_parser() -> argparse.ArgumentParser:
     delete.add_argument("--json", action="store_true")
     delete.set_defaults(func=command_profile_delete)
 
+    update_transcript = profile_sub.add_parser("update-transcript", help="Update the cached transcript for one voice profile")
+    update_transcript.add_argument("profile")
+    update_transcript.add_argument("--transcript")
+    update_transcript.add_argument("--transcript-file")
+    update_transcript.add_argument("--json", action="store_true")
+    update_transcript.set_defaults(func=command_profile_update_transcript)
+
     speak = subparsers.add_parser("speak", help="Generate speech with one voice profile")
     speak.add_argument("--profile", required=True)
     speak.add_argument("--text")
     speak.add_argument("--text-file")
     speak.add_argument("--out", required=True)
-    speak.add_argument("--model", default=DEFAULT_MODEL_ID)
-    speak.add_argument("--device", default="auto")
-    speak.add_argument("--cfg-value", type=float, default=2.0)
-    speak.add_argument("--inference-timesteps", type=int, default=10)
-    speak.add_argument("--normalize", action="store_true")
-    speak.add_argument("--denoise", action="store_true", help="Enable reference audio denoising. WAV profiles are recommended.")
+    add_generation_options(speak)
     speak.add_argument("--json", action="store_true")
     speak.set_defaults(func=command_speak)
+
+    batch = subparsers.add_parser("batch", help="Generate multiple speech files from a txt or JSONL input")
+    batch.add_argument("--profile", required=True)
+    batch.add_argument("--input", required=True)
+    batch.add_argument("--out-dir", required=True)
+    batch.add_argument("--format", choices=["auto", "txt", "jsonl"], default="auto")
+    add_generation_options(batch)
+    batch.add_argument("--json", action="store_true")
+    batch.set_defaults(func=command_batch)
+
+    history = subparsers.add_parser("history", help="Inspect generation history")
+    history_sub = history.add_subparsers(dest="history_command", required=True)
+    history_list = history_sub.add_parser("list", help="List recent generation records")
+    history_list.add_argument("--limit", type=int, default=20)
+    history_list.add_argument("--profile")
+    history_list.add_argument("--json", action="store_true")
+    history_list.set_defaults(func=command_history_list)
 
     return parser
 

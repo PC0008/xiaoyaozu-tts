@@ -7,10 +7,14 @@
 - `xiaoyao-tts profile list`
 - `xiaoyao-tts profile inspect`
 - `xiaoyao-tts profile delete`
+- `xiaoyao-tts profile update-transcript`
 - `xiaoyao-tts speak`
+- `xiaoyao-tts history list`
+- `xiaoyao-tts batch`
 - JSON output for agent calls
 - Automatic audio conversion to 16kHz mono WAV
 - Transcript caching inside voice profiles
+- Generation history records
 
 ## Phase 2: Agent Workflow
 

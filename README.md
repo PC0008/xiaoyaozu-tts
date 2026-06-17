@@ -47,6 +47,37 @@ xiaoyao-tts profile list --json
 xiaoyao-tts speak --profile me --text-file script.txt --out out.wav --json
 ```
 
+修正参考音频文稿：
+
+```bash
+xiaoyao-tts profile update-transcript me \
+  --transcript-file corrected-transcript.txt
+```
+
+查看生成历史：
+
+```bash
+xiaoyao-tts history list
+xiaoyao-tts history list --profile me --json
+```
+
+批量生成：
+
+```bash
+# txt: 一行一条文案，空行和 # 注释会跳过
+xiaoyao-tts batch \
+  --profile me \
+  --input scripts.txt \
+  --out-dir outputs/batch
+
+# jsonl: 每行一个 {"id": "...", "text": "..."}
+xiaoyao-tts batch \
+  --profile me \
+  --input scripts.jsonl \
+  --out-dir outputs/batch \
+  --json
+```
+
 ## Project Structure
 
 ```text
@@ -71,6 +102,7 @@ xiaoyaozu-tts/
 ~/.xiaoyaozu-tts/
   profiles/
   outputs/
+  history/generations.jsonl
 ```
 
 可以通过环境变量覆盖：
