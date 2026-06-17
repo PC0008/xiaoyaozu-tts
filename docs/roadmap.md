@@ -25,6 +25,8 @@
 
 ## Phase 3: Minimal Web UI
 
+Web UI should be developed as a separate product surface from the CLI. The CLI remains the automation core; the UI can call the same package or shell command later.
+
 - Voice library sidebar
 - Add voice profile flow
 - Target text input

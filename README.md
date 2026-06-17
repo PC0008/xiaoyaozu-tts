@@ -2,14 +2,24 @@
 
 本地优先的声音克隆工具，面向创作者和 Agent 工作流。
 
-当前阶段：CLI MVP 开发中。
+当前阶段：CLI MVP 已可用，Web UI 将作为独立项目面开发。
+
+![逍遥族TTS Logo](assets/brand/xiaoyaozu-tts-logo.svg)
+
+## What It Does
+
+- 把 `.m4a/.mp3/.wav` 参考录音保存为可复用声音档案
+- 自动转成 `16kHz mono WAV`
+- 自动 ASR 或手动维护参考文稿
+- 用 VoxCPM2 极致克隆生成配音
+- 支持单条、批量、生成历史和 agent-friendly JSON
 
 ## Quick Start
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[all]"
 
 xiaoyao-tts doctor
 ```
@@ -84,9 +94,18 @@ xiaoyao-tts batch \
 xiaoyaozu-tts/
   assets/brand/   Logo 与品牌资产
   docs/           产品和设计文档
+  examples/       批量输入示例
   src/            CLI 与核心代码
   tests/          基础测试
 ```
+
+## Docs
+
+- [Installation](docs/installation.md)
+- [CLI Reference](docs/cli.md)
+- [Agent Usage](docs/agent.md)
+- [Safety And Consent](docs/safety.md)
+- [Roadmap](docs/roadmap.md)
 
 ## Brand Assets
 

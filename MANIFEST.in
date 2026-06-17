@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+recursive-include assets/brand *.svg
+recursive-include docs *.md
+recursive-include examples *.txt *.jsonl
+recursive-include tests *.py

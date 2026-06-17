@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib.util
 import json
+import platform
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -13,7 +15,7 @@ from .audio import find_ffmpeg
 from .batch import load_batch_items
 from .backend import VoxCPMBackend
 from .config import DEFAULT_MODEL_ID, app_home, ensure_app_dirs
-from .errors import XiaoyaoTTSError
+from .errors import InputError, XiaoyaoTTSError
 from .history import list_generation_records, new_batch_id, record_generation
 from .profiles import create_profile, delete_profile, list_profiles, load_profile, update_profile_transcript
 
@@ -49,17 +51,17 @@ def fail(exc: Exception, *, as_json: bool = False) -> int:
 
 def read_text_arg(text: str | None, text_file: str | None) -> str:
     if text and text_file:
-        raise XiaoyaoTTSError("Use either --text or --text-file, not both.")
+        raise InputError("Use either --text or --text-file, not both.")
     if text_file:
         return Path(text_file).read_text(encoding="utf-8").strip()
     if text:
         return text.strip()
-    raise XiaoyaoTTSError("Missing text. Use --text or --text-file.")
+    raise InputError("Missing text. Use --text or --text-file.")
 
 
 def read_transcript_arg(value: str | None, transcript_file: str | None) -> str | None:
     if value and transcript_file:
-        raise XiaoyaoTTSError("Use either --transcript or --transcript-file, not both.")
+        raise InputError("Use either --transcript or --transcript-file, not both.")
     if transcript_file:
         return Path(transcript_file).read_text(encoding="utf-8").strip()
     return value.strip() if value else None
@@ -68,17 +70,25 @@ def read_transcript_arg(value: str | None, transcript_file: str | None) -> str |
 def command_doctor(args: argparse.Namespace) -> int:
     ensure_app_dirs()
     ffmpeg_path = find_ffmpeg()
+    voxcpm_available = importlib.util.find_spec("voxcpm") is not None
+    funasr_available = importlib.util.find_spec("funasr") is not None
     payload = {
         "version": __version__,
+        "python": platform.python_version(),
         "home": str(app_home()),
         "ffmpeg": ffmpeg_path,
+        "voxcpm_available": voxcpm_available,
+        "funasr_available": funasr_available,
         "profiles": len(list_profiles()),
     }
     ok(payload, as_json=args.json)
     if not args.json:
         print(f"逍遥族TTS {payload['version']}")
+        print(f"Python: {payload['python']}")
         print(f"Home: {payload['home']}")
         print(f"ffmpeg: {payload['ffmpeg']}")
+        print(f"VoxCPM: {'available' if payload['voxcpm_available'] else 'missing'}")
+        print(f"FunASR: {'available' if payload['funasr_available'] else 'missing'}")
         print(f"Profiles: {payload['profiles']}")
     return 0
 
@@ -144,7 +154,7 @@ def command_profile_delete(args: argparse.Namespace) -> int:
 def command_profile_update_transcript(args: argparse.Namespace) -> int:
     transcript = read_transcript_arg(args.transcript, args.transcript_file)
     if transcript is None:
-        raise XiaoyaoTTSError("Missing transcript. Use --transcript or --transcript-file.")
+        raise InputError("Missing transcript. Use --transcript or --transcript-file.")
     profile = update_profile_transcript(args.profile, transcript)
     payload = {
         "profile": asdict(profile),

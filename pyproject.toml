@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,22 +8,48 @@ version = "0.1.0"
 description = "Local-first voice profile and TTS cloning toolkit for creators and agents."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
   { name = "PC0008" }
 ]
+keywords = ["tts", "voice-cloning", "cli", "agents", "local-first"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Utilities",
+]
 dependencies = [
-  "voxcpm>=2.0.0",
   "soundfile>=0.12",
 ]
 
 [project.optional-dependencies]
+tts = [
+  "voxcpm>=2.0.0",
+]
 dev = [
+  "build>=1.2",
+  "pytest>=8",
+]
+all = [
+  "voxcpm>=2.0.0",
+  "build>=1.2",
   "pytest>=8",
 ]
 
 [project.scripts]
 xiaoyao-tts = "xiaoyao_tts.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/PC0008/xiaoyaozu-tts"
+Repository = "https://github.com/PC0008/xiaoyaozu-tts"
+Issues = "https://github.com/PC0008/xiaoyaozu-tts/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

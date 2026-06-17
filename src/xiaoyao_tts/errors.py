@@ -5,6 +5,10 @@ class XiaoyaoTTSError(Exception):
     code = "xiaoyao_tts_error"
 
 
+class InputError(XiaoyaoTTSError):
+    code = "invalid_input"
+
+
 class AudioToolError(XiaoyaoTTSError):
     code = "audio_tool_error"
 
