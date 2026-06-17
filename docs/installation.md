@@ -22,6 +22,12 @@ brew install ffmpeg
 git clone https://github.com/PC0008/xiaoyaozu-tts.git
 cd xiaoyaozu-tts
 
+./scripts/install.sh --all
+```
+
+Manual equivalent:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[all]"

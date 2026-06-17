@@ -104,6 +104,7 @@ xiaoyaozu-tts/
 - [Installation](docs/installation.md)
 - [CLI Reference](docs/cli.md)
 - [Agent Usage](docs/agent.md)
+- [Share And Agent Install](docs/share.md)
 - [Safety And Consent](docs/safety.md)
 - [Roadmap](docs/roadmap.md)
 
