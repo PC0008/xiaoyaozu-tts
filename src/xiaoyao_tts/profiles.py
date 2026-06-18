@@ -107,35 +107,40 @@ def create_profile(
         shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
 
-    suffix = audio_path.suffix.lower() or ".audio"
-    source_name = f"source{suffix}"
-    source_target = root / source_name
-    shutil.copy2(audio_path, source_target)
-    reference_target = root / "reference.wav"
-    convert_to_reference_wav(source_target, reference_target, sample_rate=DEFAULT_SAMPLE_RATE)
+    try:
+        suffix = audio_path.suffix.lower() or ".audio"
+        source_name = f"source{suffix}"
+        source_target = root / source_name
+        shutil.copy2(audio_path, source_target)
+        reference_target = root / "reference.wav"
+        convert_to_reference_wav(source_target, reference_target, sample_rate=DEFAULT_SAMPLE_RATE)
 
-    transcript = transcript.strip()
-    if not transcript:
-        raise ProfileError("Transcript cannot be empty.")
-    transcript_file = root / "transcript.txt"
-    transcript_file.write_text(transcript + "\n", encoding="utf-8")
+        transcript = transcript.strip()
+        if not transcript:
+            raise ProfileError("Transcript cannot be empty.")
+        transcript_file = root / "transcript.txt"
+        transcript_file.write_text(transcript + "\n", encoding="utf-8")
 
-    info = audio_info(reference_target)
-    now = utc_now()
-    profile = VoiceProfile(
-        id=final_id,
-        name=name,
-        created_at=now,
-        updated_at=now,
-        source_audio=source_name,
-        reference_wav="reference.wav",
-        transcript_file="transcript.txt",
-        duration_sec=info.get("duration_sec"),
-        sample_rate=DEFAULT_SAMPLE_RATE,
-        consent=consent,
-    )
-    (root / "profile.json").write_text(json.dumps(asdict(profile), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return profile
+        info = audio_info(reference_target)
+        now = utc_now()
+        profile = VoiceProfile(
+            id=final_id,
+            name=name,
+            created_at=now,
+            updated_at=now,
+            source_audio=source_name,
+            reference_wav="reference.wav",
+            transcript_file="transcript.txt",
+            duration_sec=info.get("duration_sec"),
+            sample_rate=DEFAULT_SAMPLE_RATE,
+            consent=consent,
+        )
+        (root / "profile.json").write_text(json.dumps(asdict(profile), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return profile
+    except Exception:
+        if root.exists():
+            shutil.rmtree(root)
+        raise
 
 
 def update_profile_transcript(profile_id: str, transcript: str) -> VoiceProfile:

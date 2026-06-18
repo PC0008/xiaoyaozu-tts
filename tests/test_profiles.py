@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 
 from xiaoyao_tts.batch import load_batch_items
+from xiaoyao_tts.config import profiles_dir
+from xiaoyao_tts.errors import AudioToolError
 from xiaoyao_tts.history import list_generation_records, record_generation
 from xiaoyao_tts.profiles import create_profile, slugify_profile_id, update_profile_transcript
 
@@ -106,3 +108,19 @@ def test_update_profile_transcript(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     updated = update_profile_transcript(profile.id, "新文稿")
     assert updated.transcript == "新文稿"
     assert updated.updated_at != profile.updated_at
+
+
+def test_create_profile_cleans_partial_directory_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("XIAOYAO_TTS_HOME", str(tmp_path / "home"))
+    source = tmp_path / "ref.wav"
+    source.write_bytes(b"not real audio")
+
+    def fail_convert(*args, **kwargs):
+        raise AudioToolError("simulated conversion failure")
+
+    monkeypatch.setattr("xiaoyao_tts.profiles.convert_to_reference_wav", fail_convert)
+
+    with pytest.raises(AudioToolError):
+        create_profile(name="智多星1", audio_path=source, transcript="测试文稿")
+
+    assert not (profiles_dir() / "智多星1").exists()
