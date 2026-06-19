@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -140,6 +141,7 @@ def test_cli_transcribe_outputs_json(tmp_path: Path, monkeypatch: pytest.MonkeyP
     exit_code = main(["transcribe", "--audio", str(source), "--json"])
 
     output = capsys.readouterr().out
+    payload = json.loads(output)
     assert exit_code == 0
-    assert '"ok": true' in output
-    assert '"text": "自动识别出来的参考文稿"' in output
+    assert payload["ok"] is True
+    assert payload["text"] == "自动识别出来的参考文稿"

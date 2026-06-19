@@ -22,7 +22,7 @@ from .setup_models import cache_status, download_models, status_as_dicts
 
 
 def emit_json(payload: dict) -> None:
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    print(json.dumps(payload, ensure_ascii=True, indent=2))
 
 
 @contextlib.contextmanager
