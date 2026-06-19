@@ -196,6 +196,7 @@ def command_speak(args: argparse.Namespace) -> int:
             cfg_value=args.cfg_value,
             inference_timesteps=args.inference_timesteps,
             normalize=args.normalize,
+            speed=args.speed,
         )
     record = record_generation(
         profile=profile.id,
@@ -208,6 +209,7 @@ def command_speak(args: argparse.Namespace) -> int:
         cfg_value=args.cfg_value,
         inference_timesteps=args.inference_timesteps,
         source="speak",
+        speed=args.speed,
     )
     payload = {"profile": profile.id, **result, "message": f"Saved: {result['output']}"}
     payload["history"] = asdict(record)
@@ -236,6 +238,7 @@ def command_batch(args: argparse.Namespace) -> int:
                 cfg_value=args.cfg_value,
                 inference_timesteps=args.inference_timesteps,
                 normalize=args.normalize,
+                speed=args.speed,
             )
         record = record_generation(
             profile=profile.id,
@@ -248,6 +251,7 @@ def command_batch(args: argparse.Namespace) -> int:
             cfg_value=args.cfg_value,
             inference_timesteps=args.inference_timesteps,
             source="batch",
+            speed=args.speed,
             batch_id=batch_id,
             item_id=item.id,
         )
@@ -318,6 +322,7 @@ def add_generation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--cfg-value", type=float, default=2.0)
     parser.add_argument("--inference-timesteps", type=int, default=10)
+    parser.add_argument("--speed", type=float, choices=[0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5], default=1.0)
     parser.add_argument("--normalize", action="store_true")
     parser.add_argument("--denoise", action="store_true", help="Enable reference audio denoising. WAV profiles are recommended.")
 

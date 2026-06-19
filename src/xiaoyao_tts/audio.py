@@ -49,6 +49,36 @@ def convert_to_reference_wav(source: Path, target: Path, sample_rate: int = DEFA
     return target
 
 
+def change_audio_speed(source: Path, target: Path, speed: float) -> Path:
+    if not source.exists():
+        raise AudioToolError(f"Audio file does not exist: {source}")
+    if not 0.5 <= speed <= 2.0:
+        raise AudioToolError("Speed must be between 0.5 and 2.0.")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg = find_ffmpeg()
+    command = [
+        ffmpeg,
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(source),
+        "-filter:a",
+        f"atempo={speed:.3f}",
+        "-ac",
+        "1",
+        "-sample_fmt",
+        "s16",
+        str(target),
+    ]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        message = result.stderr.strip() or "Failed to change audio speed with ffmpeg."
+        raise AudioToolError(message)
+    return target
+
+
 def audio_info(path: Path) -> dict:
     if not path.exists():
         raise AudioToolError(f"Audio file does not exist: {path}")

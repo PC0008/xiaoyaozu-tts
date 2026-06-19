@@ -23,6 +23,7 @@ class GenerationRecord:
     cfg_value: float
     inference_timesteps: int
     source: str
+    speed: float = 1.0
     batch_id: str | None = None
     item_id: str | None = None
 
@@ -61,6 +62,7 @@ def record_generation(
     cfg_value: float,
     inference_timesteps: int,
     source: str,
+    speed: float = 1.0,
     batch_id: str | None = None,
     item_id: str | None = None,
 ) -> GenerationRecord:
@@ -78,6 +80,7 @@ def record_generation(
             cfg_value=cfg_value,
             inference_timesteps=inference_timesteps,
             source=source,
+            speed=speed,
             batch_id=batch_id,
             item_id=item_id,
         )
@@ -94,6 +97,7 @@ def list_generation_records(limit: int = 20, profile: str | None = None) -> list
         if not line.strip():
             continue
         payload = json.loads(line)
+        payload.setdefault("speed", 1.0)
         if profile and payload.get("profile") != profile:
             continue
         records.append(GenerationRecord(**payload))

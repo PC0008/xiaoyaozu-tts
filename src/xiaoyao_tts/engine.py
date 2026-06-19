@@ -60,6 +60,7 @@ class EngineServer:
         cfg_value = float(params.get("cfg_value", 2.0))
         inference_timesteps = int(params.get("inference_timesteps", 10))
         normalize = bool(params.get("normalize", False))
+        speed = float(params.get("speed", 1.0))
         source = str(params.get("source") or "engine")
         batch_id = params.get("batch_id")
         item_id = params.get("item_id")
@@ -72,6 +73,7 @@ class EngineServer:
                 cfg_value=cfg_value,
                 inference_timesteps=inference_timesteps,
                 normalize=normalize,
+                speed=speed,
             )
 
         record = record_generation(
@@ -85,6 +87,7 @@ class EngineServer:
             cfg_value=cfg_value,
             inference_timesteps=inference_timesteps,
             source=source,
+            speed=speed,
             batch_id=str(batch_id) if batch_id else None,
             item_id=str(item_id) if item_id else None,
         )

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import soundfile as sf
 
+from .audio import audio_info, change_audio_speed
 from .config import DEFAULT_MODEL_ID
 from .errors import BackendError
 from .profiles import VoiceProfile
@@ -40,6 +41,7 @@ class VoxCPMBackend:
         cfg_value: float = 2.0,
         inference_timesteps: int = 10,
         normalize: bool = False,
+        speed: float = 1.0,
     ) -> dict:
         text = text.strip()
         if not text:
@@ -57,10 +59,20 @@ class VoxCPMBackend:
             denoise=self.denoise,
         )
         sample_rate = model.tts_model.sample_rate
-        sf.write(output_path, wav, sample_rate)
-        duration_sec = len(wav) / float(sample_rate) if sample_rate else None
+        if abs(speed - 1.0) < 0.001:
+            sf.write(output_path, wav, sample_rate)
+            duration_sec = len(wav) / float(sample_rate) if sample_rate else None
+        else:
+            temp_path = output_path.with_name(f"{output_path.stem}.raw{output_path.suffix}")
+            sf.write(temp_path, wav, sample_rate)
+            try:
+                change_audio_speed(temp_path, output_path, speed)
+                duration_sec = audio_info(output_path).get("duration_sec")
+            finally:
+                temp_path.unlink(missing_ok=True)
         return {
             "output": str(output_path.resolve()),
             "sample_rate": sample_rate,
             "duration_sec": duration_sec,
+            "speed": speed,
         }

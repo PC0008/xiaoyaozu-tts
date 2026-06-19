@@ -78,9 +78,38 @@ def test_history_records_are_listed_newest_first(tmp_path: Path, monkeypatch: py
         cfg_value=2.0,
         inference_timesteps=4,
         source="test",
+        speed=1.2,
     )
     assert [record.id for record in list_generation_records()] == [second.id, first.id]
     assert [record.id for record in list_generation_records(profile="me")] == [first.id]
+    assert list_generation_records()[0].speed == 1.2
+    assert list_generation_records()[1].speed == 1.0
+
+
+def test_history_reads_old_records_without_speed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("XIAOYAO_TTS_HOME", str(tmp_path / "home"))
+    history_path = tmp_path / "home" / "history" / "generations.jsonl"
+    history_path.parent.mkdir(parents=True)
+    payload = {
+        "id": "old",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "profile": "me",
+        "text": "旧记录",
+        "output": str(tmp_path / "old.wav"),
+        "sample_rate": 48000,
+        "duration_sec": 1.0,
+        "device": "cpu",
+        "model": "test",
+        "cfg_value": 2.0,
+        "inference_timesteps": 10,
+        "source": "test",
+    }
+    history_path.write_text(json.dumps(payload, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    records = list_generation_records()
+
+    assert len(records) == 1
+    assert records[0].speed == 1.0
 
 
 def test_update_profile_transcript(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
