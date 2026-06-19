@@ -74,6 +74,22 @@ def command_doctor(args: argparse.Namespace) -> int:
     ffmpeg_path = find_ffmpeg()
     voxcpm_available = importlib.util.find_spec("voxcpm") is not None
     funasr_available = importlib.util.find_spec("funasr") is not None
+    torch_info = {"available": False}
+    try:
+        import torch
+
+        torch_info = {
+            "available": True,
+            "version": torch.__version__,
+            "cuda_available": bool(torch.cuda.is_available()),
+            "cuda_version": getattr(torch.version, "cuda", None),
+            "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            "cuda_device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+            "cudnn_version": torch.backends.cudnn.version() if torch.cuda.is_available() else None,
+            "mps_available": bool(hasattr(torch.backends, "mps") and torch.backends.mps.is_available()),
+        }
+    except Exception as exc:
+        torch_info = {"available": False, "error": str(exc)}
     payload = {
         "version": __version__,
         "python": platform.python_version(),
@@ -81,6 +97,7 @@ def command_doctor(args: argparse.Namespace) -> int:
         "ffmpeg": ffmpeg_path,
         "voxcpm_available": voxcpm_available,
         "funasr_available": funasr_available,
+        "torch": torch_info,
         "models": status_as_dicts(),
         "profiles": len(list_profiles()),
     }
@@ -92,6 +109,13 @@ def command_doctor(args: argparse.Namespace) -> int:
         print(f"ffmpeg: {payload['ffmpeg']}")
         print(f"VoxCPM: {'available' if payload['voxcpm_available'] else 'missing'}")
         print(f"FunASR: {'available' if payload['funasr_available'] else 'missing'}")
+        if torch_info.get("available"):
+            print(f"Torch: {torch_info.get('version')}")
+            print(f"CUDA: {'available' if torch_info.get('cuda_available') else 'missing'}")
+            if torch_info.get("cuda_device_name"):
+                print(f"CUDA device: {torch_info.get('cuda_device_name')}")
+        else:
+            print(f"Torch: missing ({torch_info.get('error', '-')})")
         for status in cache_status():
             state = "cached" if status.cached else "missing"
             print(f"Model {status.name}: {state} ({status.size_human})")
