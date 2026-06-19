@@ -172,6 +172,17 @@ def command_profile_update_transcript(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_transcribe(args: argparse.Namespace) -> int:
+    audio_path = Path(args.audio).expanduser().resolve()
+    with noisy_runtime(args.json):
+        text = SenseVoiceASR(device=args.device).transcribe(audio_path)
+    payload = {"text": text, "message": "Transcribed reference audio"}
+    ok(payload, as_json=args.json)
+    if not args.json:
+        print(text)
+    return 0
+
+
 def command_speak(args: argparse.Namespace) -> int:
     profile = load_profile(args.profile)
     text = read_text_arg(args.text, args.text_file)
@@ -363,6 +374,12 @@ def build_parser() -> argparse.ArgumentParser:
     update_transcript.add_argument("--transcript-file")
     update_transcript.add_argument("--json", action="store_true")
     update_transcript.set_defaults(func=command_profile_update_transcript)
+
+    transcribe = subparsers.add_parser("transcribe", help="Transcribe reference audio without creating a voice profile")
+    transcribe.add_argument("--audio", required=True, help="Reference recording path, such as .m4a/.mp3/.wav")
+    transcribe.add_argument("--device", default="cpu", help="ASR device, default: cpu")
+    transcribe.add_argument("--json", action="store_true")
+    transcribe.set_defaults(func=command_transcribe)
 
     speak = subparsers.add_parser("speak", help="Generate speech with one voice profile")
     speak.add_argument("--profile", required=True)

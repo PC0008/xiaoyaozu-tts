@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from xiaoyao_tts.batch import load_batch_items
+from xiaoyao_tts.cli import main
 from xiaoyao_tts.config import profiles_dir
 from xiaoyao_tts.errors import AudioToolError
 from xiaoyao_tts.history import list_generation_records, record_generation
@@ -124,3 +125,21 @@ def test_create_profile_cleans_partial_directory_on_failure(tmp_path: Path, monk
         create_profile(name="智多星1", audio_path=source, transcript="测试文稿")
 
     assert not (profiles_dir() / "智多星1").exists()
+
+
+def test_cli_transcribe_outputs_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]):
+    source = tmp_path / "ref.wav"
+    source.write_bytes(b"fake audio")
+
+    def fake_transcribe(self, audio_path: Path):
+        assert audio_path == source.resolve()
+        return "自动识别出来的参考文稿"
+
+    monkeypatch.setattr("xiaoyao_tts.cli.SenseVoiceASR.transcribe", fake_transcribe)
+
+    exit_code = main(["transcribe", "--audio", str(source), "--json"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert '"ok": true' in output
+    assert '"text": "自动识别出来的参考文稿"' in output
