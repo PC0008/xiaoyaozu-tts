@@ -15,6 +15,7 @@ from .audio import find_ffmpeg
 from .batch import load_batch_items
 from .backend import VoxCPMBackend
 from .config import DEFAULT_MODEL_ID, app_home, ensure_app_dirs
+from .engine import run_engine_server
 from .errors import InputError, XiaoyaoTTSError
 from .history import list_generation_records, new_batch_id, record_generation
 from .profiles import create_profile, delete_profile, list_profiles, load_profile, update_profile_transcript
@@ -308,6 +309,10 @@ def command_setup_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_serve(args: argparse.Namespace) -> int:
+    return run_engine_server(model_id=args.model, device=args.device, denoise=args.denoise)
+
+
 def add_generation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL_ID)
     parser.add_argument("--device", default="auto")
@@ -380,6 +385,12 @@ def build_parser() -> argparse.ArgumentParser:
     transcribe.add_argument("--device", default="cpu", help="ASR device, default: cpu")
     transcribe.add_argument("--json", action="store_true")
     transcribe.set_defaults(func=command_transcribe)
+
+    serve = subparsers.add_parser("serve", help="Run a persistent JSONL speech generation engine")
+    serve.add_argument("--model", default=DEFAULT_MODEL_ID)
+    serve.add_argument("--device", default="auto")
+    serve.add_argument("--denoise", action="store_true", help="Enable reference audio denoising for the persistent engine")
+    serve.set_defaults(func=command_serve)
 
     speak = subparsers.add_parser("speak", help="Generate speech with one voice profile")
     speak.add_argument("--profile", required=True)

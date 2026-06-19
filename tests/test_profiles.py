@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import io
 import json
 import shutil
 import subprocess
@@ -12,6 +13,7 @@ import pytest
 from xiaoyao_tts.batch import load_batch_items
 from xiaoyao_tts.cli import main
 from xiaoyao_tts.config import profiles_dir
+from xiaoyao_tts.engine import run_engine_server
 from xiaoyao_tts.errors import AudioToolError
 from xiaoyao_tts.history import list_generation_records, record_generation
 from xiaoyao_tts.profiles import create_profile, slugify_profile_id, update_profile_transcript
@@ -145,3 +147,18 @@ def test_cli_transcribe_outputs_json(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert exit_code == 0
     assert payload["ok"] is True
     assert payload["text"] == "自动识别出来的参考文稿"
+
+
+def test_engine_server_ping_shutdown():
+    stdin = io.StringIO('{"id":"one","method":"ping"}\n{"id":"two","method":"shutdown"}\n')
+    stdout = io.StringIO()
+
+    exit_code = run_engine_server(stdin=stdin, stdout=stdout)
+
+    lines = [json.loads(line) for line in stdout.getvalue().splitlines()]
+    assert exit_code == 0
+    assert lines[0]["ok"] is True
+    assert lines[0]["id"] == "one"
+    assert lines[0]["result"]["device"] == "auto"
+    assert lines[1]["ok"] is True
+    assert lines[1]["shutdown"] is True
