@@ -6,17 +6,20 @@ import json
 import shutil
 import subprocess
 import sys
+from argparse import Namespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from xiaoyao_tts.batch import load_batch_items
-from xiaoyao_tts.cli import main
+from xiaoyao_tts.cli import generate_speech, main
 from xiaoyao_tts.config import profiles_dir
 from xiaoyao_tts.engine import run_engine_server
 from xiaoyao_tts.errors import AudioToolError
 from xiaoyao_tts.history import list_generation_records, record_generation
 from xiaoyao_tts.profiles import create_profile, slugify_profile_id, update_profile_transcript
+from xiaoyao_tts.text_split import split_long_text
 
 
 def test_slugify_profile_id_keeps_chinese_and_ascii():
@@ -51,6 +54,107 @@ def test_batch_loader_supports_txt_and_jsonl(tmp_path: Path):
     assert jsonl_items[0].id == "scene-01"
     assert jsonl_items[0].text == "开场"
     assert jsonl_items[1].id == "item-002"
+
+
+def test_long_text_split_prefers_natural_breaks():
+    text = (
+        "很多知识付费创业者，到今天还没有真正看懂 AI，他们以为 AI 就是写写文案，做做海报，剪剪视频，整理一下课件。"
+        "如果你也是这样理解 AI 的，那么我必须提醒你一句：你可能把这轮机会，看得太浅了。"
+        "AI 对知识付费创业者最大的改变，不是帮你省几个小时，而是它会重新定义一件事：你的经验，究竟还能不能卖钱？"
+        "过去你卖课，是因为你有经验，别人没有。你会做流量，他不会；你会成交，他不会；你会写文案，他不会。"
+        "但是今天问题来了，如果 AI 已经可以帮他写方案，拆流程，做诊断，改文案，生成 SOP，那么他还为什么必须听你一节一节讲？"
+    )
+
+    segments = split_long_text(text, "long")
+
+    assert len(segments) >= 2
+    assert all(len(segment.text) <= 200 for segment in segments)
+    assert segments[0].text[-1] in "。！？!?；;，,、：:.．·"
+
+
+def test_generate_speech_auto_segments_and_merges(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls: list[str] = []
+
+    class FakeBackend:
+        def speak(self, *, text: str, output_path: Path, **kwargs):
+            calls.append(text)
+            output_path.write_bytes(b"fake wav")
+            return {
+                "output": str(output_path),
+                "sample_rate": 16000,
+                "duration_sec": 1.0,
+                "diagnostics": {"runtime": {"resolved_device": "cpu"}},
+            }
+
+    def fake_merge(files: list[Path], target: Path, silence_ms: int = 40):
+        assert len(files) == len(calls)
+        assert silence_ms == 40
+        target.write_bytes(b"merged wav")
+        return target
+
+    monkeypatch.setattr("xiaoyao_tts.cli.merge_wav_files", fake_merge)
+    monkeypatch.setattr("xiaoyao_tts.cli.audio_info", lambda path: {"sample_rate": 16000, "duration_sec": 3.0})
+
+    text = (
+        "很多知识付费创业者，到今天还没有真正看懂 AI，他们以为 AI 就是写写文案，做做海报，剪剪视频，整理一下课件。"
+        "如果你也是这样理解 AI 的，那么我必须提醒你一句：你可能把这轮机会，看得太浅了。"
+        "AI 对知识付费创业者最大的改变，不是帮你省几个小时，而是它会重新定义一件事：你的经验，究竟还能不能卖钱？"
+        "过去你卖课，是因为你有经验，别人没有。你会做流量，他不会；你会成交，他不会；你会写文案，他不会。"
+        "但是今天问题来了，如果 AI 已经可以帮他写方案，拆流程，做诊断，改文案，生成 SOP，那么他还为什么必须听你一节一节讲？"
+    )
+    result = generate_speech(
+        backend=FakeBackend(),
+        profile=SimpleNamespace(id="me"),
+        text=text,
+        output_path=tmp_path / "voice.wav",
+        args=Namespace(
+            cfg_value=2.0,
+            inference_timesteps=10,
+            normalize=False,
+            speed=1.0,
+            denoise=False,
+            no_auto_segment=False,
+            segment_threshold=180,
+            segment_preset="long",
+            segment_silence_ms=40,
+        ),
+    )
+
+    assert len(calls) >= 2
+    assert result["output"].endswith("voice.wav")
+    assert result["segmented"] is True
+    assert result["segments"] == len(calls)
+
+
+def test_generate_speech_can_disable_auto_segment(tmp_path: Path):
+    calls: list[str] = []
+
+    class FakeBackend:
+        def speak(self, *, text: str, output_path: Path, **kwargs):
+            calls.append(text)
+            output_path.write_bytes(b"fake wav")
+            return {"output": str(output_path), "sample_rate": 16000, "duration_sec": 1.0}
+
+    result = generate_speech(
+        backend=FakeBackend(),
+        profile=SimpleNamespace(id="me"),
+        text="这是一段会超过阈值但主动关闭自动分段的文本。" * 20,
+        output_path=tmp_path / "voice.wav",
+        args=Namespace(
+            cfg_value=2.0,
+            inference_timesteps=10,
+            normalize=False,
+            speed=1.0,
+            denoise=False,
+            no_auto_segment=True,
+            segment_threshold=180,
+            segment_preset="long",
+            segment_silence_ms=40,
+        ),
+    )
+
+    assert len(calls) == 1
+    assert "segmented" not in result
 
 
 def test_history_records_are_listed_newest_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

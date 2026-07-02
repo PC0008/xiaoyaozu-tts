@@ -8,6 +8,7 @@
 - Read final results from `stdout`.
 - Treat progress logs and model loading logs on `stderr` as non-fatal unless exit code is non-zero.
 - Use `--text-file` for long scripts.
+- Do not manually split normal long scripts. `xiaoyao-tts speak` automatically splits text above 180 characters at natural punctuation, generates each segment, and merges one final WAV.
 - Use stable profile ids instead of display names when automating.
 
 ## Discover Voices
@@ -50,9 +51,13 @@ Successful output:
   "profile": "me",
   "output": "/abs/path/outputs/agent.wav",
   "sample_rate": 48000,
-  "duration_sec": 3.2
+  "duration_sec": 3.2,
+  "segmented": true,
+  "segments": 3
 }
 ```
+
+For advanced debugging, `--no-auto-segment` disables long-text splitting, and `--segment-preset long` / `--segment-threshold 180` keep the default behavior explicit.
 
 Failure output:
 

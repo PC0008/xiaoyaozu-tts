@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from .config import DEFAULT_SAMPLE_RATE
@@ -76,6 +77,79 @@ def change_audio_speed(source: Path, target: Path, speed: float) -> Path:
     if result.returncode != 0:
         message = result.stderr.strip() or "Failed to change audio speed with ffmpeg."
         raise AudioToolError(message)
+    return target
+
+
+def _concat_list_line(path: Path) -> str:
+    return "file '" + str(path).replace("'", "'\\''") + "'"
+
+
+def merge_wav_files(files: list[Path], target: Path, silence_ms: int = 40) -> Path:
+    files = [path for path in files if path]
+    if not files:
+        raise AudioToolError("No audio files to merge.")
+    for path in files:
+        if not path.exists():
+            raise AudioToolError(f"Audio file does not exist: {path}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg = find_ffmpeg()
+    with tempfile.TemporaryDirectory(prefix="xiaoyao-tts-merge-") as temp_name:
+        temp_dir = Path(temp_name)
+        concat_files = files
+        normalized_silence_ms = max(0, min(5000, int(silence_ms or 0)))
+        if normalized_silence_ms > 0 and len(files) > 1:
+            silence_path = temp_dir / "silence.wav"
+            silence_command = [
+                ffmpeg,
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "anullsrc=r=16000:cl=mono",
+                "-t",
+                f"{normalized_silence_ms / 1000:.3f}",
+                str(silence_path),
+            ]
+            result = subprocess.run(silence_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if result.returncode != 0:
+                message = result.stderr.strip() or "Failed to create merge silence with ffmpeg."
+                raise AudioToolError(message)
+            concat_files = []
+            for index, path in enumerate(files):
+                concat_files.append(path)
+                if index < len(files) - 1:
+                    concat_files.append(silence_path)
+
+        list_path = temp_dir / "concat.txt"
+        list_path.write_text("\n".join(_concat_list_line(path) for path in concat_files) + "\n", encoding="utf-8")
+        temp_output = temp_dir / "final.wav"
+        command = [
+            ffmpeg,
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(list_path),
+            "-ac",
+            "1",
+            "-sample_fmt",
+            "s16",
+            str(temp_output),
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode != 0:
+            message = result.stderr.strip() or "Failed to merge audio with ffmpeg."
+            raise AudioToolError(message)
+        temp_output.replace(target)
     return target
 
 

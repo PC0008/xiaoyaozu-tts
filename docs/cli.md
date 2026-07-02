@@ -74,6 +74,9 @@ xiaoyao-tts speak \
 Useful options:
 
 - `--text-file script.txt`
+- Long text above 180 characters is automatically split at natural punctuation and merged into one WAV.
+- `--no-auto-segment` disables automatic long-text splitting.
+- `--segment-preset long` uses the default 130/160/180 character long-form rule.
 - `--device auto|cpu|mps|cuda|cuda:N`
 - `--inference-timesteps 4`
 - `--cfg-value 2.0`
@@ -111,6 +114,8 @@ xiaoyao-tts batch \
   --format jsonl \
   --json
 ```
+
+Each batch item also uses the same automatic long-text split and merge logic, so one input row still produces one final WAV file.
 
 ## History
 

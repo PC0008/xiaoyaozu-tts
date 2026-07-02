@@ -6,12 +6,13 @@ import importlib.util
 import json
 import platform
 import sys
+import tempfile
 from dataclasses import asdict
 from pathlib import Path
 
 from . import __version__
 from .asr import SenseVoiceASR
-from .audio import find_ffmpeg
+from .audio import audio_info, find_ffmpeg, merge_wav_files
 from .batch import load_batch_items
 from .backend import VoxCPMBackend
 from .config import DEFAULT_MODEL_ID, app_home, ensure_app_dirs
@@ -20,6 +21,11 @@ from .errors import InputError, XiaoyaoTTSError
 from .history import list_generation_records, new_batch_id, record_generation
 from .profiles import create_profile, delete_profile, list_profiles, load_profile, update_profile_transcript
 from .setup_models import cache_status, download_models, status_as_dicts
+from .text_split import SPLIT_PRESETS, split_long_text
+
+
+AUTO_SEGMENT_THRESHOLD = 180
+SEGMENT_SILENCE_MS = 40
 
 
 def emit_json(payload: dict) -> None:
@@ -208,19 +214,109 @@ def command_transcribe(args: argparse.Namespace) -> int:
     return 0
 
 
+def generate_speech(
+    *,
+    backend: VoxCPMBackend,
+    profile,
+    text: str,
+    output_path: Path,
+    args: argparse.Namespace,
+) -> dict:
+    text = text.strip()
+    threshold = max(1, int(args.segment_threshold))
+    if args.no_auto_segment or len(text) <= threshold:
+        return backend.speak(
+            profile=profile,
+            text=text,
+            output_path=output_path,
+            cfg_value=args.cfg_value,
+            inference_timesteps=args.inference_timesteps,
+            normalize=args.normalize,
+            speed=args.speed,
+        )
+
+    segments = split_long_text(text, args.segment_preset)
+    if len(segments) <= 1:
+        return backend.speak(
+            profile=profile,
+            text=text,
+            output_path=output_path,
+            cfg_value=args.cfg_value,
+            inference_timesteps=args.inference_timesteps,
+            normalize=args.normalize,
+            speed=args.speed,
+        )
+
+    output_files: list[Path] = []
+    segment_results: list[dict] = []
+    with tempfile.TemporaryDirectory(prefix="xiaoyao-tts-segmented-") as temp_name:
+        temp_dir = Path(temp_name)
+        for segment in segments:
+            segment_output = temp_dir / f"{segment.id}.wav"
+            result = backend.speak(
+                profile=profile,
+                text=segment.text,
+                output_path=segment_output,
+                cfg_value=args.cfg_value,
+                inference_timesteps=args.inference_timesteps,
+                normalize=args.normalize,
+                speed=args.speed,
+            )
+            output_files.append(Path(result["output"]))
+            segment_results.append(result)
+
+        merge_wav_files(output_files, output_path, silence_ms=args.segment_silence_ms)
+
+    merged_info = audio_info(output_path)
+    sample_rate = merged_info.get("sample_rate") or segment_results[0].get("sample_rate")
+    duration_sec = merged_info.get("duration_sec")
+    segment_durations = [
+        result.get("duration_sec")
+        for result in segment_results
+        if result.get("duration_sec") is not None
+    ]
+    return {
+        "output": str(output_path.resolve()),
+        "sample_rate": sample_rate,
+        "duration_sec": duration_sec,
+        "speed": args.speed,
+        "segmented": True,
+        "segments": len(segments),
+        "diagnostics": {
+            "segmented": {
+                "enabled": True,
+                "threshold": threshold,
+                "preset": args.segment_preset,
+                "segments": len(segments),
+                "silence_ms": args.segment_silence_ms,
+                "segment_chars": [len(segment.text) for segment in segments],
+                "segment_duration_seconds": segment_durations,
+            },
+            "runtime": segment_results[0].get("diagnostics", {}).get("runtime", {}),
+            "params": {
+                "text_chars": len(text),
+                "cfg_value": args.cfg_value,
+                "inference_timesteps": args.inference_timesteps,
+                "normalize": args.normalize,
+                "speed": args.speed,
+                "denoise": args.denoise,
+                "profile": profile.id,
+            },
+        },
+    }
+
+
 def command_speak(args: argparse.Namespace) -> int:
     profile = load_profile(args.profile)
     text = read_text_arg(args.text, args.text_file)
     backend = VoxCPMBackend(model_id=args.model, device=args.device, denoise=args.denoise)
     with noisy_runtime(args.json):
-        result = backend.speak(
+        result = generate_speech(
+            backend=backend,
             profile=profile,
             text=text,
             output_path=Path(args.out).expanduser().resolve(),
-            cfg_value=args.cfg_value,
-            inference_timesteps=args.inference_timesteps,
-            normalize=args.normalize,
-            speed=args.speed,
+            args=args,
         )
     record = record_generation(
         profile=profile.id,
@@ -255,14 +351,12 @@ def command_batch(args: argparse.Namespace) -> int:
     for index, item in enumerate(items, start=1):
         output_path = out_dir / f"{index:03d}-{item.id}.wav"
         with noisy_runtime(args.json):
-            result = backend.speak(
+            result = generate_speech(
+                backend=backend,
                 profile=profile,
                 text=item.text,
                 output_path=output_path,
-                cfg_value=args.cfg_value,
-                inference_timesteps=args.inference_timesteps,
-                normalize=args.normalize,
-                speed=args.speed,
+                args=args,
             )
         record = record_generation(
             profile=profile.id,
@@ -349,6 +443,10 @@ def add_generation_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--speed", type=float, choices=[0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5], default=1.0)
     parser.add_argument("--normalize", action="store_true")
     parser.add_argument("--denoise", action="store_true", help="Enable reference audio denoising. WAV profiles are recommended.")
+    parser.add_argument("--no-auto-segment", action="store_true", help="Disable automatic long-text segmentation and WAV merge.")
+    parser.add_argument("--segment-preset", choices=sorted(SPLIT_PRESETS), default="long", help="Automatic segmentation preset. Default: long.")
+    parser.add_argument("--segment-threshold", type=int, default=AUTO_SEGMENT_THRESHOLD, help="Characters above this value trigger automatic segmentation. Default: 180.")
+    parser.add_argument("--segment-silence-ms", type=int, default=SEGMENT_SILENCE_MS, help="Silence inserted between merged segments. Default: 40.")
 
 
 def build_parser() -> argparse.ArgumentParser:
